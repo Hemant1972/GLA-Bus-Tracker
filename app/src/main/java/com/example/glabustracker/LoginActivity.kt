@@ -123,15 +123,8 @@ class LoginActivity : AppCompatActivity() {
             // Open ForgotPasswordActivity
         }
 
-        // Sign Up
-//        tvSignUp.setOnClickListener {
-//
-//            Toast.makeText(
-//                this,
-//                "Sign Up clicked",
-//                Toast.LENGTH_SHORT
-//            ).show()
 
+       // Signup click
         tvSignUp.setOnClickListener {
 
             val intent = Intent(
@@ -140,17 +133,29 @@ class LoginActivity : AppCompatActivity() {
             )
 
             startActivity(intent)
-
-
-            // Later:
-            // startActivity(Intent(this, SignupActivity::class.java))
         }
 
+        // Send Otp Click
         btnSendOtp.setOnClickListener {
 
             val intent = Intent(
                 this,
                 OtpActivity::class.java
+            )
+
+            startActivity(intent)
+        }
+
+
+      // Fogot password click
+        val tvForgotPassword =
+            findViewById<TextView>(R.id.tvForgotPassword)
+
+        tvForgotPassword.setOnClickListener {
+
+            val intent = Intent(
+                this,
+                ForgotPasswordActivity::class.java
             )
 
             startActivity(intent)
