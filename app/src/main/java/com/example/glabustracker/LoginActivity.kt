@@ -289,14 +289,32 @@ class LoginActivity : AppCompatActivity() {
             startActivity(intent)
 
             finish()
+        }
 
-        } else if (loginType == "Staff") {
+//         else if (loginType == "Staff") {
+//
+//            Toast.makeText(
+//                this,
+//                "Staff Home Page will be added later",
+//                Toast.LENGTH_SHORT
+//            ).show()
+//        }
 
-            Toast.makeText(
+        else if (loginType == "Staff") {
+
+            val intent = Intent(
                 this,
-                "Staff Home Page will be added later",
-                Toast.LENGTH_SHORT
-            ).show()
+                StaffHomeActivity::class.java
+            )
+
+            intent.putExtra(
+                "userId",
+                userId
+            )
+
+            startActivity(intent)
+
+            finish()
         }
     }
 
