@@ -16,7 +16,10 @@ class LoginActivity : AppCompatActivity() {
 
     private lateinit var actLoginType: AutoCompleteTextView
     private lateinit var etUserId: EditText
-    private lateinit var btnSendOtp: Button
+    private lateinit var etPassword: EditText
+
+    private lateinit var btnLogin: Button
+    private lateinit var tvLoginWithOtp: TextView
     private lateinit var tvForgotPassword: TextView
     private lateinit var tvSignUp: TextView
 
@@ -35,19 +38,38 @@ class LoginActivity : AppCompatActivity() {
         setupClickListeners()
     }
 
+    // ----------------------------------------------------
+    // Initialize Views
+    // ----------------------------------------------------
+
     private fun initializeViews() {
 
         actLoginType = findViewById(R.id.actLoginType)
+
         etUserId = findViewById(R.id.etUserId)
-        btnSendOtp = findViewById(R.id.btnSendOtp)
+
+        etPassword = findViewById(R.id.etPassword)
+
+        btnLogin = findViewById(R.id.btnLogin)
+
+        tvLoginWithOtp = findViewById(R.id.tvLoginWithOtp)
+
         tvForgotPassword = findViewById(R.id.tvForgotPassword)
+
         tvSignUp = findViewById(R.id.tvSignUp)
 
         layoutAboutGla = findViewById(R.id.layoutAboutGla)
+
         layoutFacebook = findViewById(R.id.layoutFacebook)
+
         layoutInstagram = findViewById(R.id.layoutInstagram)
+
         layoutGlams = findViewById(R.id.layoutGlams)
     }
+
+    // ----------------------------------------------------
+    // Login Type Dropdown
+    // ----------------------------------------------------
 
     private fun setupLoginTypeDropdown() {
 
@@ -65,91 +87,47 @@ class LoginActivity : AppCompatActivity() {
 
         actLoginType.setAdapter(adapter)
 
-        // Student default selected
-        actLoginType.setText(loginTypes[0], false)
+        // Student selected by default
+        actLoginType.setText(
+            loginTypes[0],
+            false
+        )
 
         actLoginType.setOnClickListener {
+
             actLoginType.showDropDown()
         }
     }
 
+    // ----------------------------------------------------
+    // Click Listeners
+    // ----------------------------------------------------
+
     private fun setupClickListeners() {
 
-        // Send OTP
-        btnSendOtp.setOnClickListener {
+        // ------------------------------------------------
+        // NORMAL LOGIN
+        // ------------------------------------------------
 
-            val loginType = actLoginType.text.toString().trim()
-            val userId = etUserId.text.toString().trim()
+        btnLogin.setOnClickListener {
 
-            if (loginType.isEmpty()) {
-
-                Toast.makeText(
-                    this,
-                    "Please select login type",
-                    Toast.LENGTH_SHORT
-                ).show()
-
-                return@setOnClickListener
-            }
-
-            if (userId.isEmpty()) {
-
-                etUserId.error = "Please enter User ID"
-                etUserId.requestFocus()
-
-                return@setOnClickListener
-            }
-
-            // Temporary functionality
-            // Firebase OTP will be added later.
-
-            Toast.makeText(
-                this,
-                "OTP will be sent to $userId",
-                Toast.LENGTH_SHORT
-            ).show()
-        }
-
-        // Forgot Password
-        tvForgotPassword.setOnClickListener {
-
-            Toast.makeText(
-                this,
-                "Forgot Password clicked",
-                Toast.LENGTH_SHORT
-            ).show()
-
-            // Later:
-            // Open ForgotPasswordActivity
+            loginUser()
         }
 
 
-       // Signup click
-        tvSignUp.setOnClickListener {
+        // ------------------------------------------------
+        // LOGIN WITH OTP
+        // ------------------------------------------------
 
-            val intent = Intent(
-                this,
-                SignupActivity::class.java
-            )
+        tvLoginWithOtp.setOnClickListener {
 
-            startActivity(intent)
-        }
-
-        // Send Otp Click
-        btnSendOtp.setOnClickListener {
-
-            val intent = Intent(
-                this,
-                OtpActivity::class.java
-            )
-
-            startActivity(intent)
+            loginWithOtp()
         }
 
 
-      // Fogot password click
-        val tvForgotPassword =
-            findViewById<TextView>(R.id.tvForgotPassword)
+        // ------------------------------------------------
+        // FORGOT PASSWORD
+        // ------------------------------------------------
 
         tvForgotPassword.setOnClickListener {
 
@@ -161,7 +139,26 @@ class LoginActivity : AppCompatActivity() {
             startActivity(intent)
         }
 
-        // About GLA
+
+        // ------------------------------------------------
+        // SIGN UP
+        // ------------------------------------------------
+
+        tvSignUp.setOnClickListener {
+
+            val intent = Intent(
+                this,
+                SignupActivity::class.java
+            )
+
+            startActivity(intent)
+        }
+
+
+        // ------------------------------------------------
+        // ABOUT GLA
+        // ------------------------------------------------
+
         layoutAboutGla.setOnClickListener {
 
             openWebsite(
@@ -169,7 +166,11 @@ class LoginActivity : AppCompatActivity() {
             )
         }
 
-        // Facebook
+
+        // ------------------------------------------------
+        // FACEBOOK
+        // ------------------------------------------------
+
         layoutFacebook.setOnClickListener {
 
             openWebsite(
@@ -177,7 +178,11 @@ class LoginActivity : AppCompatActivity() {
             )
         }
 
-        // Instagram
+
+        // ------------------------------------------------
+        // INSTAGRAM
+        // ------------------------------------------------
+
         layoutInstagram.setOnClickListener {
 
             openWebsite(
@@ -185,7 +190,11 @@ class LoginActivity : AppCompatActivity() {
             )
         }
 
+
+        // ------------------------------------------------
         // GLAMS
+        // ------------------------------------------------
+
         layoutGlams.setOnClickListener {
 
             Toast.makeText(
@@ -194,10 +203,178 @@ class LoginActivity : AppCompatActivity() {
                 Toast.LENGTH_SHORT
             ).show()
 
-            // GLAMS URL will be added after confirming
-            // the official GLAMS URL.
+            // Official GLAMS URL will be added later.
         }
     }
+
+    // ----------------------------------------------------
+    // Normal Login
+    // ----------------------------------------------------
+
+    private fun loginUser() {
+
+        val loginType =
+            actLoginType.text.toString().trim()
+
+        val userId =
+            etUserId.text.toString().trim()
+
+        val password =
+            etPassword.text.toString().trim()
+
+
+        // Check Login Type
+
+        if (loginType.isEmpty()) {
+
+            Toast.makeText(
+                this,
+                "Please select login type",
+                Toast.LENGTH_SHORT
+            ).show()
+
+            return
+        }
+
+
+        // Check User ID
+
+        if (userId.isEmpty()) {
+
+            etUserId.error =
+                "Please enter User ID"
+
+            etUserId.requestFocus()
+
+            return
+        }
+
+
+        // Check Password
+
+        if (password.isEmpty()) {
+
+            etPassword.error =
+                "Please enter password"
+
+            etPassword.requestFocus()
+
+            return
+        }
+
+
+        // Temporary Login
+
+        Toast.makeText(
+            this,
+            "$loginType login processing...",
+            Toast.LENGTH_SHORT
+        ).show()
+
+
+        /*
+         * Firebase / Database authentication
+         * will be added here later.
+         *
+         * Example:
+         *
+         * Student -> Student Database
+         * Parent  -> Parent Database
+         * Staff   -> Staff Database
+         */
+
+
+        // Temporary Home navigation
+        /*
+        val intent = Intent(
+            this,
+            MainActivity::class.java
+        )
+
+        startActivity(intent)
+        finish()
+        */
+    }
+
+    // ----------------------------------------------------
+    // Login With OTP
+    // ----------------------------------------------------
+
+    private fun loginWithOtp() {
+
+        val loginType =
+            actLoginType.text.toString().trim()
+
+        val userId =
+            etUserId.text.toString().trim()
+
+
+        // Check Login Type
+
+        if (loginType.isEmpty()) {
+
+            Toast.makeText(
+                this,
+                "Please select login type",
+                Toast.LENGTH_SHORT
+            ).show()
+
+            return
+        }
+
+
+        // Check User ID
+
+        if (userId.isEmpty()) {
+
+            etUserId.error =
+                "Please enter User ID"
+
+            etUserId.requestFocus()
+
+            return
+        }
+
+
+        /*
+         * Later:
+         *
+         * User ID
+         *     ↓
+         * Database
+         *     ↓
+         * Registered Mobile Number
+         *     ↓
+         * Firebase OTP
+         */
+
+
+        val intent = Intent(
+            this,
+            OtpActivity::class.java
+        )
+
+        intent.putExtra(
+            "purpose",
+            "login"
+        )
+
+        intent.putExtra(
+            "loginType",
+            loginType
+        )
+
+        intent.putExtra(
+            "userId",
+            userId
+        )
+
+        startActivity(intent)
+    }
+
+    // ----------------------------------------------------
+    // Open Website
+    // ----------------------------------------------------
 
     private fun openWebsite(url: String) {
 
