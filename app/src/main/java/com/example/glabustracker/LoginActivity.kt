@@ -114,7 +114,6 @@ class LoginActivity : AppCompatActivity() {
             loginUser()
         }
 
-
         // ------------------------------------------------
         // LOGIN WITH OTP
         // ------------------------------------------------
@@ -123,7 +122,6 @@ class LoginActivity : AppCompatActivity() {
 
             loginWithOtp()
         }
-
 
         // ------------------------------------------------
         // FORGOT PASSWORD
@@ -139,7 +137,6 @@ class LoginActivity : AppCompatActivity() {
             startActivity(intent)
         }
 
-
         // ------------------------------------------------
         // SIGN UP
         // ------------------------------------------------
@@ -154,7 +151,6 @@ class LoginActivity : AppCompatActivity() {
             startActivity(intent)
         }
 
-
         // ------------------------------------------------
         // ABOUT GLA
         // ------------------------------------------------
@@ -165,7 +161,6 @@ class LoginActivity : AppCompatActivity() {
                 "https://www.gla.ac.in/"
             )
         }
-
 
         // ------------------------------------------------
         // FACEBOOK
@@ -178,7 +173,6 @@ class LoginActivity : AppCompatActivity() {
             )
         }
 
-
         // ------------------------------------------------
         // INSTAGRAM
         // ------------------------------------------------
@@ -189,7 +183,6 @@ class LoginActivity : AppCompatActivity() {
                 "https://www.instagram.com/glauniversity/"
             )
         }
-
 
         // ------------------------------------------------
         // GLAMS
@@ -263,37 +256,48 @@ class LoginActivity : AppCompatActivity() {
         }
 
 
-        // Temporary Login
+        // ------------------------------------------------
+        // TEMPORARY LOGIN
+        // ------------------------------------------------
+        //
+        // Abhi database authentication add nahi kiya hai.
+        // Student aur Parent dono same portal use karenge.
+        // ------------------------------------------------
 
-        Toast.makeText(
-            this,
-            "$loginType login processing...",
-            Toast.LENGTH_SHORT
-        ).show()
+        if (loginType == "Student" || loginType == "Parent") {
 
+            val intent = Intent(
+                this,
+                StudentParentHomeActivity::class.java
+            )
 
-        /*
-         * Firebase / Database authentication
-         * will be added here later.
-         *
-         * Example:
-         *
-         * Student -> Student Database
-         * Parent  -> Parent Database
-         * Staff   -> Staff Database
-         */
+            intent.putExtra(
+                "userName",
+                "Hemant Singh"
+            )
 
+            intent.putExtra(
+                "userId",
+                userId
+            )
 
-        // Temporary Home navigation
-        /*
-        val intent = Intent(
-            this,
-            MainActivity::class.java
-        )
+            intent.putExtra(
+                "accountType",
+                loginType
+            )
 
-        startActivity(intent)
-        finish()
-        */
+            startActivity(intent)
+
+            finish()
+
+        } else if (loginType == "Staff") {
+
+            Toast.makeText(
+                this,
+                "Staff Home Page will be added later",
+                Toast.LENGTH_SHORT
+            ).show()
+        }
     }
 
     // ----------------------------------------------------
