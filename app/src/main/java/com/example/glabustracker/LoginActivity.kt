@@ -146,6 +146,16 @@ class LoginActivity : AppCompatActivity() {
             // startActivity(Intent(this, SignupActivity::class.java))
         }
 
+        btnSendOtp.setOnClickListener {
+
+            val intent = Intent(
+                this,
+                OtpActivity::class.java
+            )
+
+            startActivity(intent)
+        }
+
         // About GLA
         layoutAboutGla.setOnClickListener {
 
