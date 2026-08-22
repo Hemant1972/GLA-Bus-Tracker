@@ -124,13 +124,23 @@ class LoginActivity : AppCompatActivity() {
         }
 
         // Sign Up
+//        tvSignUp.setOnClickListener {
+//
+//            Toast.makeText(
+//                this,
+//                "Sign Up clicked",
+//                Toast.LENGTH_SHORT
+//            ).show()
+
         tvSignUp.setOnClickListener {
 
-            Toast.makeText(
+            val intent = Intent(
                 this,
-                "Sign Up clicked",
-                Toast.LENGTH_SHORT
-            ).show()
+                SignupActivity::class.java
+            )
+
+            startActivity(intent)
+
 
             // Later:
             // startActivity(Intent(this, SignupActivity::class.java))
