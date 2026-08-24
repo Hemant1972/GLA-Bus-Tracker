@@ -138,6 +138,7 @@ material = "1.14.0"
 activityKtx = "1.13.0"
 constraintlayout = "2.2.2"
 
+
 # Firebase
 firebaseBom = "34.17.0"
 
