@@ -7,6 +7,8 @@ import android.widget.ImageView
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.FirebaseFirestore
 
 class StudentParentHomeActivity : AppCompatActivity() {
 
@@ -28,12 +30,20 @@ class StudentParentHomeActivity : AppCompatActivity() {
     private lateinit var tvLogout: TextView
     private lateinit var ivProfile: ImageView
 
+    // Firebase
+    private lateinit var auth: FirebaseAuth
+    private lateinit var firestore: FirebaseFirestore
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
         setContentView(R.layout.activity_student_parent_home)
 
         initializeViews()
+
+        // Firebase initialize
+        auth = FirebaseAuth.getInstance()
+        firestore = FirebaseFirestore.getInstance()
 
         loadUserData()
 
@@ -82,45 +92,138 @@ class StudentParentHomeActivity : AppCompatActivity() {
     }
 
     // ----------------------------------------------------
-    // Load User Data
+    // Load User Data From Firebase
     // ----------------------------------------------------
 
     private fun loadUserData() {
 
+        val currentUser = auth.currentUser
+
+        // Check whether user is logged in
+        if (currentUser == null) {
+
+            Toast.makeText(
+                this,
+                "Session expired. Please login again.",
+                Toast.LENGTH_SHORT
+            ).show()
+
+            goToLogin()
+
+            return
+        }
+
+        val uid = currentUser.uid
+
         /*
-         * Temporary data.
+         * Firestore structure:
          *
-         * Later these values will come from
-         * Firebase / Firestore database.
+         * users
+         *   └── UID
+         *       ├── fullName
+         *       ├── email
+         *       ├── mobile
+         *       ├── role
+         *       ├── studentId
+         *       └── createdAt
          */
 
-        val userName =
-            intent.getStringExtra("userName")
-                ?: "Welcome User"
+        firestore.collection("users")
+            .document(uid)
+            .get()
+            .addOnSuccessListener { document ->
 
-        val userId =
-            intent.getStringExtra("userId")
-                ?: "24MCA0000"
+                if (document.exists()) {
 
-        val accountType =
-            intent.getStringExtra("accountType")
-                ?: "Student"
+                    val userName =
+                        document.getString("fullName")
+                            ?: "User"
+
+                    val studentId =
+                        document.getString("studentId")
+                            ?: "Not Available"
+
+                    val role =
+                        document.getString("role")
+                            ?: ""
+
+                    // ------------------------------------
+                    // Check Role
+                    // ------------------------------------
+
+                    when (role.lowercase()) {
+
+                        "student" -> {
+
+                            tvWelcome.text =
+                                "Welcome, $userName"
+
+                            tvUserName.text =
+                                userName
+
+                            tvUserId.text =
+                                "Student ID: $studentId"
+
+                            tvAccountType.text =
+                                "Account: Student"
+                        }
+
+                        "parent" -> {
+
+                            tvWelcome.text =
+                                "Welcome, $userName"
+
+                            tvUserName.text =
+                                userName
+
+                            tvUserId.text =
+                                "Student ID: $studentId"
+
+                            tvAccountType.text =
+                                "Account: Parent"
+                        }
+
+                        else -> {
+
+                            Toast.makeText(
+                                this,
+                                "Invalid account role.",
+                                Toast.LENGTH_SHORT
+                            ).show()
+
+                            goToLogin()
+                        }
+                    }
+
+                } else {
+
+                    Toast.makeText(
+                        this,
+                        "User profile not found.",
+                        Toast.LENGTH_SHORT
+                    ).show()
+
+                    goToLogin()
+                }
+            }
+            .addOnFailureListener { exception ->
+
+                Toast.makeText(
+                    this,
+                    "Unable to load user data: ${exception.message}",
+                    Toast.LENGTH_LONG
+                ).show()
+            }
 
 
-        tvWelcome.text =
-            "Welcome, $userName"
+        // -----------------------------------------------
+        // Temporary Bus Data
+        // -----------------------------------------------
 
-        tvUserName.text =
-            userName
-
-        tvUserId.text =
-            "Student ID: $userId"
-
-        tvAccountType.text =
-            "Account: $accountType"
-
-
-        // Temporary bus data
+        /*
+         * These values will later come from Firestore
+         * / Realtime Database / Live GPS.
+         */
 
         tvBusNumber.text =
             "GLA-01"
@@ -144,7 +247,9 @@ class StudentParentHomeActivity : AppCompatActivity() {
 
     private fun setupClickListeners() {
 
+        // ------------------------------------------------
         // Track Bus
+        // ------------------------------------------------
 
         btnTrackBus.setOnClickListener {
 
@@ -157,13 +262,16 @@ class StudentParentHomeActivity : AppCompatActivity() {
             /*
              * Later:
              *
-             * Open Google Maps
-             * and show live bus location.
+             * Google Maps
+             * +
+             * Live bus location
              */
         }
 
 
+        // ------------------------------------------------
         // Bus Schedule
+        // ------------------------------------------------
 
         btnSchedule.setOnClickListener {
 
@@ -175,7 +283,9 @@ class StudentParentHomeActivity : AppCompatActivity() {
         }
 
 
+        // ------------------------------------------------
         // Notifications
+        // ------------------------------------------------
 
         btnNotifications.setOnClickListener {
 
@@ -187,7 +297,9 @@ class StudentParentHomeActivity : AppCompatActivity() {
         }
 
 
+        // ------------------------------------------------
         // Profile
+        // ------------------------------------------------
 
         ivProfile.setOnClickListener {
 
@@ -199,7 +311,9 @@ class StudentParentHomeActivity : AppCompatActivity() {
         }
 
 
+        // ------------------------------------------------
         // Logout
+        // ------------------------------------------------
 
         tvLogout.setOnClickListener {
 
@@ -214,9 +328,25 @@ class StudentParentHomeActivity : AppCompatActivity() {
     private fun logoutUser() {
 
         /*
-         * Later Firebase logout/session clear
-         * will be implemented here.
+         * Firebase Authentication session clear
          */
+
+        auth.signOut()
+
+        Toast.makeText(
+            this,
+            "Logged out successfully",
+            Toast.LENGTH_SHORT
+        ).show()
+
+        goToLogin()
+    }
+
+    // ----------------------------------------------------
+    // Go To Login
+    // ----------------------------------------------------
+
+    private fun goToLogin() {
 
         val intent = Intent(
             this,
