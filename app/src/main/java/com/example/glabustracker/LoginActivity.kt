@@ -325,8 +325,20 @@ class LoginActivity : AppCompatActivity() {
         password: String
     ) {
 
+//        firestore.collection("users")
+//            .whereEqualTo("studentId", userId)
+//            .limit(1)
+//            .get()
+        val idField = if (
+            loginType.equals("Staff", ignoreCase = true)
+        ) {
+            "staffId"
+        } else {
+            "studentId"
+        }
+
         firestore.collection("users")
-            .whereEqualTo("studentId", userId)
+            .whereEqualTo(idField, userId)
             .limit(1)
             .get()
 
@@ -506,8 +518,20 @@ class LoginActivity : AppCompatActivity() {
          * may NOT have the Firebase UID as document ID.
          */
 
+//        firestore.collection("users")
+//            .whereEqualTo("studentId", userId)
+//            .limit(1)
+//            .get()
+        val idField = if (
+            loginType.equals("Staff", ignoreCase = true)
+        ) {
+            "staffId"
+        } else {
+            "studentId"
+        }
+
         firestore.collection("users")
-            .whereEqualTo("studentId", userId)
+            .whereEqualTo(idField, userId)
             .limit(1)
             .get()
 
@@ -884,12 +908,23 @@ class LoginActivity : AppCompatActivity() {
         firebaseUser: FirebaseUser
     ) {
 
+//        val role =
+//            document.getString("role")
+
+//        val userId =
+//            document.getString("studentId")
+//                ?: ""
+
         val role =
             document.getString("role")
 
-        val userId =
-            document.getString("studentId")
-                ?: ""
+        val userId = if (
+            role.equals("staff", ignoreCase = true)
+        ) {
+            document.getString("staffId") ?: ""
+        } else {
+            document.getString("studentId") ?: ""
+        }
 
         val userName =
             document.getString("fullName")
