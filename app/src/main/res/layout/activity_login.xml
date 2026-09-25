@@ -21,7 +21,7 @@
             android:layout_gravity="center"
             android:contentDescription="GLA Bus Tracker Logo"
             android:padding="10dp"
-            android:src="@drawable/ic_bus" />
+            android:src="@drawable/ic_bus" />3
 
         <!-- App Name -->
 

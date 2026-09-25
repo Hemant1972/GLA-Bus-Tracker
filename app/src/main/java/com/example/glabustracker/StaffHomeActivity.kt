@@ -6,6 +6,7 @@ import android.widget.Button
 import android.widget.LinearLayout
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import com.google.firebase.auth.FirebaseAuth
 
 class StaffHomeActivity : AppCompatActivity() {
 
@@ -17,15 +18,25 @@ class StaffHomeActivity : AppCompatActivity() {
     private lateinit var layoutReports: LinearLayout
     private lateinit var btnLogout: Button
 
+    // Firebase Authentication
+    private lateinit var auth: FirebaseAuth
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
         setContentView(R.layout.activity_staff_home)
 
+        // Firebase initialize
+        auth = FirebaseAuth.getInstance()
+
         initializeViews()
 
         setupClickListeners()
     }
+
+    // ====================================================
+    // INITIALIZE VIEWS
+    // ====================================================
 
     private fun initializeViews() {
 
@@ -51,8 +62,13 @@ class StaffHomeActivity : AppCompatActivity() {
             findViewById(R.id.btnLogout)
     }
 
+    // ====================================================
+    // CLICK LISTENERS
+    // ====================================================
+
     private fun setupClickListeners() {
 
+        // Live Tracking
         layoutLiveTracking.setOnClickListener {
 
             Toast.makeText(
@@ -62,6 +78,7 @@ class StaffHomeActivity : AppCompatActivity() {
             ).show()
         }
 
+        // Routes
         layoutRoutes.setOnClickListener {
 
             Toast.makeText(
@@ -71,6 +88,7 @@ class StaffHomeActivity : AppCompatActivity() {
             ).show()
         }
 
+        // Drivers
         layoutDrivers.setOnClickListener {
 
             Toast.makeText(
@@ -80,6 +98,7 @@ class StaffHomeActivity : AppCompatActivity() {
             ).show()
         }
 
+        // Schedule
         layoutSchedule.setOnClickListener {
 
             Toast.makeText(
@@ -89,6 +108,7 @@ class StaffHomeActivity : AppCompatActivity() {
             ).show()
         }
 
+        // Notifications
         layoutNotifications.setOnClickListener {
 
             Toast.makeText(
@@ -98,6 +118,7 @@ class StaffHomeActivity : AppCompatActivity() {
             ).show()
         }
 
+        // Reports
         layoutReports.setOnClickListener {
 
             Toast.makeText(
@@ -107,14 +128,39 @@ class StaffHomeActivity : AppCompatActivity() {
             ).show()
         }
 
+        // Logout
         btnLogout.setOnClickListener {
 
             logout()
         }
     }
 
+    // ====================================================
+    // LOGOUT
+    // ====================================================
+
     private fun logout() {
 
+        /*
+         * IMPORTANT:
+         *
+         * Firebase Authentication session must be
+         * cleared before opening LoginActivity.
+         *
+         * Otherwise LoginActivity.checkUserSession()
+         * will detect the Staff Firebase user and
+         * automatically open StaffHomeActivity again.
+         */
+
+        auth.signOut()
+
+        Toast.makeText(
+            this,
+            "Logged out successfully",
+            Toast.LENGTH_SHORT
+        ).show()
+
+        // Open LoginActivity and clear entire Activity stack
         val intent = Intent(
             this,
             LoginActivity::class.java
@@ -124,8 +170,15 @@ class StaffHomeActivity : AppCompatActivity() {
             Intent.FLAG_ACTIVITY_NEW_TASK or
                     Intent.FLAG_ACTIVITY_CLEAR_TASK
 
+        // Tell LoginActivity that this is a fresh logout
+        intent.putExtra(
+            "loggedOut",
+            true
+        )
+
         startActivity(intent)
 
         finish()
     }
 }
+
