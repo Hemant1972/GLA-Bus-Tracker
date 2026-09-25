@@ -12,9 +12,14 @@ import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.auth.FirebaseUser
 import com.google.firebase.firestore.FirebaseFirestore
 
 class LoginActivity : AppCompatActivity() {
+
+    // ----------------------------------------------------
+    // Views
+    // ----------------------------------------------------
 
     private lateinit var actLoginType: AutoCompleteTextView
     private lateinit var etUserId: EditText
@@ -30,27 +35,45 @@ class LoginActivity : AppCompatActivity() {
     private lateinit var layoutInstagram: LinearLayout
     private lateinit var layoutGlams: LinearLayout
 
+    // ----------------------------------------------------
     // Firebase
+    // ----------------------------------------------------
+
     private lateinit var auth: FirebaseAuth
     private lateinit var firestore: FirebaseFirestore
+
+    // Prevent duplicate session checking
+    private var sessionCheckCompleted = false
+
+
+    // ====================================================
+    // ON CREATE
+    // ====================================================
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
         setContentView(R.layout.activity_login)
 
-        // Firebase initialize
+        // Firebase
         auth = FirebaseAuth.getInstance()
         firestore = FirebaseFirestore.getInstance()
 
+        // Initialize UI first
         initializeViews()
+
         setupLoginTypeDropdown()
+
         setupClickListeners()
+
+        // Then check existing session
+        checkUserSession()
     }
 
-    // ----------------------------------------------------
-    // Initialize Views
-    // ----------------------------------------------------
+
+    // ====================================================
+    // INITIALIZE VIEWS
+    // ====================================================
 
     private fun initializeViews() {
 
@@ -77,9 +100,10 @@ class LoginActivity : AppCompatActivity() {
         layoutGlams = findViewById(R.id.layoutGlams)
     }
 
-    // ----------------------------------------------------
-    // Login Type Dropdown
-    // ----------------------------------------------------
+
+    // ====================================================
+    // LOGIN TYPE DROPDOWN
+    // ====================================================
 
     private fun setupLoginTypeDropdown() {
 
@@ -97,59 +121,57 @@ class LoginActivity : AppCompatActivity() {
 
         actLoginType.setAdapter(adapter)
 
-        // Student selected by default
+        // Default = Student
         actLoginType.setText(
             loginTypes[0],
             false
         )
 
         actLoginType.setOnClickListener {
-
             actLoginType.showDropDown()
         }
     }
 
-    // ----------------------------------------------------
-    // Click Listeners
-    // ----------------------------------------------------
+
+    // ====================================================
+    // CLICK LISTENERS
+    // ====================================================
 
     private fun setupClickListeners() {
 
-        // NORMAL LOGIN
+        // Normal Login
         btnLogin.setOnClickListener {
-
             loginUser()
         }
 
-        // LOGIN WITH OTP
+        // OTP Login
         tvLoginWithOtp.setOnClickListener {
-
             loginWithOtp()
         }
 
-        // FORGOT PASSWORD
+        // Forgot Password
         tvForgotPassword.setOnClickListener {
 
-            val intent = Intent(
-                this,
-                ForgotPasswordActivity::class.java
+            startActivity(
+                Intent(
+                    this,
+                    ForgotPasswordActivity::class.java
+                )
             )
-
-            startActivity(intent)
         }
 
-        // SIGN UP
+        // Signup
         tvSignUp.setOnClickListener {
 
-            val intent = Intent(
-                this,
-                SignupActivity::class.java
+            startActivity(
+                Intent(
+                    this,
+                    SignupActivity::class.java
+                )
             )
-
-            startActivity(intent)
         }
 
-        // ABOUT GLA
+        // About GLA
         layoutAboutGla.setOnClickListener {
 
             openWebsite(
@@ -157,7 +179,7 @@ class LoginActivity : AppCompatActivity() {
             )
         }
 
-        // FACEBOOK
+        // Facebook
         layoutFacebook.setOnClickListener {
 
             openWebsite(
@@ -165,7 +187,7 @@ class LoginActivity : AppCompatActivity() {
             )
         }
 
-        // INSTAGRAM
+        // Instagram
         layoutInstagram.setOnClickListener {
 
             openWebsite(
@@ -181,14 +203,13 @@ class LoginActivity : AppCompatActivity() {
                 "GLAMS will open here",
                 Toast.LENGTH_SHORT
             ).show()
-
-            // Official GLAMS URL will be added later.
         }
     }
 
-    // ----------------------------------------------------
-    // Firebase Login
-    // ----------------------------------------------------
+
+    // ====================================================
+    // NORMAL LOGIN
+    // ====================================================
 
     private fun loginUser() {
 
@@ -202,7 +223,7 @@ class LoginActivity : AppCompatActivity() {
             etPassword.text.toString()
 
         // ------------------------------------------------
-        // Validate Login Type
+        // Validation
         // ------------------------------------------------
 
         if (loginType.isEmpty()) {
@@ -216,28 +237,18 @@ class LoginActivity : AppCompatActivity() {
             return
         }
 
-        // ------------------------------------------------
-        // Validate User ID
-        // ------------------------------------------------
-
         if (userId.isEmpty()) {
 
-            etUserId.error =
-                "Please enter User ID"
+            etUserId.error = "Please enter User ID"
 
             etUserId.requestFocus()
 
             return
         }
 
-        // ------------------------------------------------
-        // Validate Password
-        // ------------------------------------------------
-
         if (password.isEmpty()) {
 
-            etPassword.error =
-                "Please enter password"
+            etPassword.error = "Please enter password"
 
             etPassword.requestFocus()
 
@@ -253,63 +264,60 @@ class LoginActivity : AppCompatActivity() {
         ).show()
 
         /*
-         * IMPORTANT:
-         * Firestore Rules require request.auth != null.
+         * IMPORTANT
          *
-         * The old code tried to read /users BEFORE Firebase
-         * Authentication, which caused:
+         * Firestore rules require authentication.
          *
-         * PERMISSION_DENIED
-         *
-         * To keep your current Firestore Rules secure, we use
-         * Firebase Anonymous Authentication only for the
-         * initial studentId -> email lookup.
-         *
-         * Then we sign out the anonymous user and perform the
-         * real email/password login.
-         *
-         * Firebase Console:
-         * Authentication -> Sign-in method -> Anonymous -> Enable
+         * Therefore we temporarily authenticate anonymously
+         * if there is no authenticated Firebase user.
          */
 
         val currentUser = auth.currentUser
 
-        if (currentUser == null) {
+        // ------------------------------------------------
+        // Already authenticated user
+        // ------------------------------------------------
 
-            auth.signInAnonymously()
-                .addOnSuccessListener {
-                    findUserAndAuthenticate(
-                        loginType,
-                        userId,
-                        password
-                    )
-                }
-                .addOnFailureListener { exception ->
+        if (currentUser != null && !currentUser.isAnonymous) {
 
-                    btnLogin.isEnabled = true
-
-                    Toast.makeText(
-                        this,
-                        "Unable to access account database: ${exception.message}",
-                        Toast.LENGTH_LONG
-                    ).show()
-                }
-
-        } else {
-
-            // If an anonymous session already exists, it is
-            // already authenticated and can read Firestore.
             findUserAndAuthenticate(
                 loginType,
                 userId,
                 password
             )
+
+            return
         }
+
+        // ------------------------------------------------
+        // Anonymous / no Firebase session
+        // ------------------------------------------------
+
+        auth.signInAnonymously()
+            .addOnSuccessListener {
+
+                findUserAndAuthenticate(
+                    loginType,
+                    userId,
+                    password
+                )
+            }
+            .addOnFailureListener { exception ->
+
+                btnLogin.isEnabled = true
+
+                Toast.makeText(
+                    this,
+                    "Unable to access account database",
+                    Toast.LENGTH_LONG
+                ).show()
+            }
     }
 
-    // ----------------------------------------------------
-    // Find User ID and Continue With Firebase Authentication
-    // ----------------------------------------------------
+
+    // ====================================================
+    // FIND USER
+    // ====================================================
 
     private fun findUserAndAuthenticate(
         loginType: String,
@@ -321,12 +329,16 @@ class LoginActivity : AppCompatActivity() {
             .whereEqualTo("studentId", userId)
             .limit(1)
             .get()
+
             .addOnSuccessListener { documents ->
+
+                // ------------------------------------------------
+                // User not found
+                // ------------------------------------------------
 
                 if (documents.isEmpty) {
 
-                    auth.signOut()
-                    btnLogin.isEnabled = true
+                    resetLoginState()
 
                     Toast.makeText(
                         this,
@@ -340,15 +352,18 @@ class LoginActivity : AppCompatActivity() {
                 val document = documents.documents[0]
 
                 val email =
-                    document.getString("email")
+                    document.getString("email")?.trim()
 
                 val storedRole =
-                    document.getString("role")
+                    document.getString("role")?.trim()
+
+                // ------------------------------------------------
+                // Email check
+                // ------------------------------------------------
 
                 if (email.isNullOrBlank()) {
 
-                    auth.signOut()
-                    btnLogin.isEnabled = true
+                    resetLoginState()
 
                     Toast.makeText(
                         this,
@@ -359,10 +374,13 @@ class LoginActivity : AppCompatActivity() {
                     return@addOnSuccessListener
                 }
 
+                // ------------------------------------------------
+                // Role check
+                // ------------------------------------------------
+
                 if (storedRole.isNullOrBlank()) {
 
-                    auth.signOut()
-                    btnLogin.isEnabled = true
+                    resetLoginState()
 
                     Toast.makeText(
                         this,
@@ -374,13 +392,17 @@ class LoginActivity : AppCompatActivity() {
                 }
 
                 // ------------------------------------------------
-                // Check selected login type with Firestore role
+                // Verify selected role
                 // ------------------------------------------------
 
-                if (!storedRole.equals(loginType, ignoreCase = true)) {
+                if (
+                    !storedRole.equals(
+                        loginType,
+                        ignoreCase = true
+                    )
+                ) {
 
-                    auth.signOut()
-                    btnLogin.isEnabled = true
+                    resetLoginState()
 
                     Toast.makeText(
                         this,
@@ -392,20 +414,25 @@ class LoginActivity : AppCompatActivity() {
                 }
 
                 /*
-                 * The Firestore lookup was performed with an
-                 * anonymous authenticated session. Now remove
-                 * that temporary session before the real login.
+                 * Firestore lookup complete.
+                 *
+                 * Sign out anonymous user before real
+                 * Firebase Authentication.
                  */
-                auth.signOut()
+
+                if (auth.currentUser?.isAnonymous == true) {
+                    auth.signOut()
+                }
 
                 // ------------------------------------------------
-                // Real Firebase Authentication
+                // Firebase Email/Password Authentication
                 // ------------------------------------------------
 
                 auth.signInWithEmailAndPassword(
-                    email.trim(),
+                    email,
                     password
                 )
+
                     .addOnSuccessListener {
 
                         val firebaseUser =
@@ -413,24 +440,28 @@ class LoginActivity : AppCompatActivity() {
 
                         if (firebaseUser == null) {
 
-                            btnLogin.isEnabled = true
+                            resetLoginState()
 
                             Toast.makeText(
                                 this,
-                                "Login failed",
+                                "Authentication failed",
                                 Toast.LENGTH_SHORT
                             ).show()
 
                             return@addOnSuccessListener
                         }
 
-                        // Verify the authenticated user's profile.
-                        verifyUserRole(
-                            firebaseUser.uid,
+                        // ------------------------------------------------
+                        // Verify final account
+                        // ------------------------------------------------
+
+                        verifyAuthenticatedUser(
+                            firebaseUser,
                             loginType,
                             userId
                         )
                     }
+
                     .addOnFailureListener { exception ->
 
                         btnLogin.isEnabled = true
@@ -444,10 +475,10 @@ class LoginActivity : AppCompatActivity() {
                         ).show()
                     }
             }
+
             .addOnFailureListener { exception ->
 
-                auth.signOut()
-                btnLogin.isEnabled = true
+                resetLoginState()
 
                 Toast.makeText(
                     this,
@@ -458,110 +489,104 @@ class LoginActivity : AppCompatActivity() {
     }
 
 
-    // ----------------------------------------------------
-    // Verify UID and Role
-    // ----------------------------------------------------
+    // ====================================================
+    // VERIFY AUTHENTICATED USER
+    // ====================================================
 
-    private fun verifyUserRole(
-        uid: String,
+    private fun verifyAuthenticatedUser(
+        firebaseUser: FirebaseUser,
         loginType: String,
         userId: String
     ) {
 
         /*
-         * Do not assume that users/{uid} exists.
-         * We verify the profile using the same studentId that
-         * was used during login.
+         * We again find the profile using User ID.
          *
-         * This works whether Signup stored the Firestore
-         * document with the Firebase UID or with an auto-ID.
+         * This is important because your Firestore document
+         * may NOT have the Firebase UID as document ID.
          */
 
         firestore.collection("users")
             .whereEqualTo("studentId", userId)
             .limit(1)
             .get()
+
             .addOnSuccessListener { documents ->
 
                 if (documents.isEmpty) {
 
-                    auth.signOut()
-                    btnLogin.isEnabled = true
-
-                    Toast.makeText(
-                        this,
-                        "User profile not found",
-                        Toast.LENGTH_SHORT
-                    ).show()
+                    logoutAndReset(
+                        "User profile not found"
+                    )
 
                     return@addOnSuccessListener
                 }
 
-                val document = documents.documents[0]
+                val document =
+                    documents.documents[0]
 
                 val role =
-                    document.getString("role")
+                    document.getString("role")?.trim()
 
                 val profileEmail =
-                    document.getString("email")
+                    document.getString("email")?.trim()
 
                 val authenticatedEmail =
-                    auth.currentUser?.email
+                    firebaseUser.email?.trim()
+
+                // ------------------------------------------------
+                // Role verification
+                // ------------------------------------------------
 
                 if (role.isNullOrBlank()) {
 
-                    auth.signOut()
-                    btnLogin.isEnabled = true
-
-                    Toast.makeText(
-                        this,
-                        "User role not found",
-                        Toast.LENGTH_SHORT
-                    ).show()
+                    logoutAndReset(
+                        "User role not found"
+                    )
 
                     return@addOnSuccessListener
                 }
-
-                // ------------------------------------------------
-                // Verify role
-                // ------------------------------------------------
-
-                if (!role.equals(loginType, ignoreCase = true)) {
-
-                    auth.signOut()
-                    btnLogin.isEnabled = true
-
-                    Toast.makeText(
-                        this,
-                        "Account role verification failed",
-                        Toast.LENGTH_SHORT
-                    ).show()
-
-                    return@addOnSuccessListener
-                }
-
-                // ------------------------------------------------
-                // Verify that the Firestore email belongs to the
-                // Firebase Authentication account.
-                // ------------------------------------------------
 
                 if (
-                    profileEmail.isNullOrBlank() ||
-                    authenticatedEmail.isNullOrBlank() ||
-                    !profileEmail.trim().equals(
-                        authenticatedEmail.trim(),
+                    !role.equals(
+                        loginType,
                         ignoreCase = true
                     )
                 ) {
 
-                    auth.signOut()
-                    btnLogin.isEnabled = true
+                    logoutAndReset(
+                        "Account role verification failed"
+                    )
 
-                    Toast.makeText(
-                        this,
-                        "Account profile does not match the authenticated account",
-                        Toast.LENGTH_LONG
-                    ).show()
+                    return@addOnSuccessListener
+                }
+
+                // ------------------------------------------------
+                // Email verification
+                // ------------------------------------------------
+
+                if (
+                    profileEmail.isNullOrBlank() ||
+                    authenticatedEmail.isNullOrBlank()
+                ) {
+
+                    logoutAndReset(
+                        "Account email verification failed"
+                    )
+
+                    return@addOnSuccessListener
+                }
+
+                if (
+                    !profileEmail.equals(
+                        authenticatedEmail,
+                        ignoreCase = true
+                    )
+                ) {
+
+                    logoutAndReset(
+                        "Account profile does not match authentication"
+                    )
 
                     return@addOnSuccessListener
                 }
@@ -569,56 +594,49 @@ class LoginActivity : AppCompatActivity() {
                 // ------------------------------------------------
                 // Optional UID verification
                 // ------------------------------------------------
-                // If Signup saved a "uid" field, verify it.
-                // If the field does not exist, do not fail login.
+
                 val storedUid =
                     document.getString("uid")
 
                 if (
                     !storedUid.isNullOrBlank() &&
-                    storedUid != uid
+                    storedUid != firebaseUser.uid
                 ) {
 
-                    auth.signOut()
-                    btnLogin.isEnabled = true
-
-                    Toast.makeText(
-                        this,
-                        "Account security verification failed",
-                        Toast.LENGTH_LONG
-                    ).show()
+                    logoutAndReset(
+                        "Account security verification failed"
+                    )
 
                     return@addOnSuccessListener
                 }
 
                 // ------------------------------------------------
-                // Login successful
+                // Everything is correct
                 // ------------------------------------------------
 
-                openCorrectHome(
-                    loginType,
-                    userId,
+                val fullName =
                     document.getString("fullName")
                         ?: "User"
+
+                openCorrectHome(
+                    role,
+                    userId,
+                    fullName
                 )
             }
+
             .addOnFailureListener { exception ->
 
-                auth.signOut()
-                btnLogin.isEnabled = true
-
-                Toast.makeText(
-                    this,
-                    "Unable to verify account: ${exception.message}",
-                    Toast.LENGTH_LONG
-                ).show()
+                logoutAndReset(
+                    "Unable to verify account: ${exception.message}"
+                )
             }
     }
 
 
-    // ----------------------------------------------------
-    // Open Correct Home Page
-    // ----------------------------------------------------
+    // ====================================================
+    // OPEN CORRECT HOME
+    // ====================================================
 
     private fun openCorrectHome(
         loginType: String,
@@ -626,41 +644,51 @@ class LoginActivity : AppCompatActivity() {
         userName: String
     ) {
 
-        val intent: Intent
+        val intent = when {
 
-        if (loginType.equals(
+            loginType.equals(
                 "Student",
                 ignoreCase = true
-            )
-        ) {
+            ) -> {
 
-            // Student and Parent currently
-            // use the same portal
-            intent = Intent(
-                this,
-                StudentParentHomeActivity::class.java
-            )
+                Intent(
+                    this,
+                    StudentParentHomeActivity::class.java
+                )
+            }
 
-        } else if (
             loginType.equals(
                 "Parent",
                 ignoreCase = true
-            )
-        ) {
+            ) -> {
 
-            // Parent also uses same portal
-            intent = Intent(
-                this,
-                StudentParentHomeActivity::class.java
-            )
+                Intent(
+                    this,
+                    StudentParentHomeActivity::class.java
+                )
+            }
 
-        } else {
+            loginType.equals(
+                "Staff",
+                ignoreCase = true
+            ) -> {
 
-            // Staff
-            intent = Intent(
-                this,
-                StaffHomeActivity::class.java
-            )
+                Intent(
+                    this,
+                    StaffHomeActivity::class.java
+                )
+            }
+
+            else -> {
+
+                Toast.makeText(
+                    this,
+                    "Invalid account type",
+                    Toast.LENGTH_SHORT
+                ).show()
+
+                return
+            }
         }
 
         intent.putExtra(
@@ -683,9 +711,319 @@ class LoginActivity : AppCompatActivity() {
         finish()
     }
 
-    // ----------------------------------------------------
-    // Firebase Login Error Messages
-    // ----------------------------------------------------
+
+    // ====================================================
+    // SESSION MANAGEMENT
+    // ====================================================
+
+    private fun checkUserSession() {
+
+        if (sessionCheckCompleted) {
+            return
+        }
+
+        val currentUser =
+            auth.currentUser
+
+        // ------------------------------------------------
+        // No session
+        // ------------------------------------------------
+
+        if (currentUser == null) {
+
+            sessionCheckCompleted = true
+
+            return
+        }
+
+        // ------------------------------------------------
+        // VERY IMPORTANT
+        //
+        // Anonymous user is NOT a real logged-in user.
+        //
+        // Do not try:
+        // users/{anonymousUid}
+        // ------------------------------------------------
+
+        if (currentUser.isAnonymous) {
+
+            sessionCheckCompleted = true
+
+            return
+        }
+
+        // ------------------------------------------------
+        // Real Firebase user
+        // ------------------------------------------------
+
+        restoreUserSession(
+            currentUser
+        )
+    }
+
+
+    // ====================================================
+    // RESTORE USER SESSION
+    // ====================================================
+
+    private fun restoreUserSession(
+        firebaseUser: FirebaseUser
+    ) {
+
+        val uid =
+            firebaseUser.uid
+
+        /*
+         * First try users/{uid}.
+         *
+         * This supports the recommended Firestore structure.
+         */
+
+        firestore.collection("users")
+            .document(uid)
+            .get()
+
+            .addOnSuccessListener { document ->
+
+                if (document.exists()) {
+
+                    processSessionDocument(
+                        document,
+                        firebaseUser
+                    )
+
+                } else {
+
+                    /*
+                     * If document ID is not UID,
+                     * find profile by authenticated email.
+                     */
+
+                    findSessionByEmail(
+                        firebaseUser
+                    )
+                }
+            }
+
+            .addOnFailureListener {
+
+                /*
+                 * If direct UID lookup fails,
+                 * try email lookup.
+                 */
+
+                findSessionByEmail(
+                    firebaseUser
+                )
+            }
+    }
+
+
+    // ====================================================
+    // SESSION FALLBACK BY EMAIL
+    // ====================================================
+
+    private fun findSessionByEmail(
+        firebaseUser: FirebaseUser
+    ) {
+
+        val email =
+            firebaseUser.email
+
+        if (email.isNullOrBlank()) {
+
+            logoutAndReset(
+                "Authenticated account has no email"
+            )
+
+            return
+        }
+
+        firestore.collection("users")
+            .whereEqualTo(
+                "email",
+                email
+            )
+            .limit(1)
+            .get()
+
+            .addOnSuccessListener { documents ->
+
+                if (documents.isEmpty) {
+
+                    logoutAndReset(
+                        "User profile not found"
+                    )
+
+                    return@addOnSuccessListener
+                }
+
+                processSessionDocument(
+                    documents.documents[0],
+                    firebaseUser
+                )
+            }
+
+            .addOnFailureListener { exception ->
+
+                Toast.makeText(
+                    this,
+                    "Unable to restore session: ${exception.message}",
+                    Toast.LENGTH_LONG
+                ).show()
+            }
+    }
+
+
+    // ====================================================
+    // PROCESS SESSION DOCUMENT
+    // ====================================================
+
+    private fun processSessionDocument(
+        document: com.google.firebase.firestore.DocumentSnapshot,
+        firebaseUser: FirebaseUser
+    ) {
+
+        val role =
+            document.getString("role")
+
+        val userId =
+            document.getString("studentId")
+                ?: ""
+
+        val userName =
+            document.getString("fullName")
+                ?: "User"
+
+        if (role.isNullOrBlank()) {
+
+            logoutAndReset(
+                "User role not found"
+            )
+
+            return
+        }
+
+        // ------------------------------------------------
+        // Verify Email
+        // ------------------------------------------------
+
+        val profileEmail =
+            document.getString("email")
+
+        val authEmail =
+            firebaseUser.email
+
+        if (
+            !profileEmail.isNullOrBlank() &&
+            !authEmail.isNullOrBlank() &&
+            !profileEmail.equals(
+                authEmail,
+                ignoreCase = true
+            )
+        ) {
+
+            logoutAndReset(
+                "Account profile verification failed"
+            )
+
+            return
+        }
+
+        // ------------------------------------------------
+        // Optional UID verification
+        // ------------------------------------------------
+
+        val storedUid =
+            document.getString("uid")
+
+        if (
+            !storedUid.isNullOrBlank() &&
+            storedUid != firebaseUser.uid
+        ) {
+
+            logoutAndReset(
+                "Account security verification failed"
+            )
+
+            return
+        }
+
+        // ------------------------------------------------
+        // Session valid
+        // ------------------------------------------------
+
+        sessionCheckCompleted = true
+
+        openCorrectHome(
+            role,
+            userId,
+            userName
+        )
+    }
+
+
+    // ====================================================
+    // OTP LOGIN
+    // ====================================================
+
+    private fun loginWithOtp() {
+
+        val loginType =
+            actLoginType.text.toString().trim()
+
+        val userId =
+            etUserId.text.toString().trim()
+
+        if (loginType.isEmpty()) {
+
+            Toast.makeText(
+                this,
+                "Please select login type",
+                Toast.LENGTH_SHORT
+            ).show()
+
+            return
+        }
+
+        if (userId.isEmpty()) {
+
+            etUserId.error =
+                "Please enter User ID"
+
+            etUserId.requestFocus()
+
+            return
+        }
+
+        val intent =
+            Intent(
+                this,
+                OtpActivity::class.java
+            )
+
+        intent.putExtra(
+            "purpose",
+            "login"
+        )
+
+        intent.putExtra(
+            "loginType",
+            loginType
+        )
+
+        intent.putExtra(
+            "userId",
+            userId
+        )
+
+        startActivity(intent)
+    }
+
+
+    // ====================================================
+    // LOGIN ERROR MESSAGE
+    // ====================================================
 
     private fun getLoginErrorMessage(
         errorMessage: String?
@@ -699,6 +1037,14 @@ class LoginActivity : AppCompatActivity() {
             ) == true -> {
 
                 "Incorrect password"
+            }
+
+            errorMessage?.contains(
+                "invalid credential",
+                ignoreCase = true
+            ) == true -> {
+
+                "Incorrect User ID or password"
             }
 
             errorMessage?.contains(
@@ -732,78 +1078,56 @@ class LoginActivity : AppCompatActivity() {
         }
     }
 
-    // ----------------------------------------------------
-    // Login With OTP
-    // ----------------------------------------------------
 
-    private fun loginWithOtp() {
+    // ====================================================
+    // RESET LOGIN STATE
+    // ====================================================
 
-        val loginType =
-            actLoginType.text.toString().trim()
+    private fun resetLoginState() {
 
-        val userId =
-            etUserId.text.toString().trim()
+        auth.signOut()
 
-        // Check Login Type
-
-        if (loginType.isEmpty()) {
-
-            Toast.makeText(
-                this,
-                "Please select login type",
-                Toast.LENGTH_SHORT
-            ).show()
-
-            return
-        }
-
-        // Check User ID
-
-        if (userId.isEmpty()) {
-
-            etUserId.error =
-                "Please enter User ID"
-
-            etUserId.requestFocus()
-
-            return
-        }
-
-        val intent = Intent(
-            this,
-            OtpActivity::class.java
-        )
-
-        intent.putExtra(
-            "purpose",
-            "login"
-        )
-
-        intent.putExtra(
-            "loginType",
-            loginType
-        )
-
-        intent.putExtra(
-            "userId",
-            userId
-        )
-
-        startActivity(intent)
+        btnLogin.isEnabled = true
     }
 
-    // ----------------------------------------------------
-    // Open Website
-    // ----------------------------------------------------
 
-    private fun openWebsite(url: String) {
+    // ====================================================
+    // LOGOUT + RESET
+    // ====================================================
+
+    private fun logoutAndReset(
+        message: String
+    ) {
+
+        auth.signOut()
+
+        btnLogin.isEnabled = true
+
+        sessionCheckCompleted = true
+
+        Toast.makeText(
+            this,
+            message,
+            Toast.LENGTH_LONG
+        ).show()
+    }
+
+
+    // ====================================================
+    // OPEN WEBSITE
+    // ====================================================
+
+    private fun openWebsite(
+        url: String
+    ) {
 
         try {
 
-            val intent = Intent(
-                Intent.ACTION_VIEW,
-                Uri.parse(url)
-            )
+            val intent =
+                Intent(
+                    Intent.ACTION_VIEW,
+                    Uri.parse(url)
+                )
 
             startActivity(intent)
 
