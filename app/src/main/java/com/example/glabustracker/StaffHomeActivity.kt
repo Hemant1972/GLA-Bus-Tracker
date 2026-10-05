@@ -1,11 +1,19 @@
 package com.example.glabustracker
 
+import android.Manifest
+import android.annotation.SuppressLint
 import android.content.Intent
+import android.content.pm.PackageManager
+import android.location.Location
 import android.os.Bundle
 import android.widget.Button
 import android.widget.LinearLayout
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.app.ActivityCompat
+import androidx.core.content.ContextCompat
+import com.google.android.gms.location.FusedLocationProviderClient
+import com.google.android.gms.location.LocationServices
 import com.google.firebase.auth.FirebaseAuth
 
 class StaffHomeActivity : AppCompatActivity() {
@@ -21,6 +29,13 @@ class StaffHomeActivity : AppCompatActivity() {
     // Firebase Authentication
     private lateinit var auth: FirebaseAuth
 
+    // Location
+    private lateinit var fusedLocationClient: FusedLocationProviderClient
+
+    companion object {
+        private const val LOCATION_PERMISSION_REQUEST_CODE = 1001
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
@@ -29,8 +44,11 @@ class StaffHomeActivity : AppCompatActivity() {
         // Firebase initialize
         auth = FirebaseAuth.getInstance()
 
-        initializeViews()
+        // Location initialize
+        fusedLocationClient =
+            LocationServices.getFusedLocationProviderClient(this)
 
+        initializeViews()
         setupClickListeners()
     }
 
@@ -70,12 +88,7 @@ class StaffHomeActivity : AppCompatActivity() {
 
         // Live Tracking
         layoutLiveTracking.setOnClickListener {
-
-            Toast.makeText(
-                this,
-                "Live Bus Tracking will be added soon",
-                Toast.LENGTH_SHORT
-            ).show()
+            checkLocationPermission()
         }
 
         // Routes
@@ -130,8 +143,118 @@ class StaffHomeActivity : AppCompatActivity() {
 
         // Logout
         btnLogout.setOnClickListener {
-
             logout()
+        }
+    }
+
+    // ====================================================
+    // LOCATION PERMISSION
+    // ====================================================
+
+    private fun checkLocationPermission() {
+
+        val fineLocationGranted =
+            ContextCompat.checkSelfPermission(
+                this,
+                Manifest.permission.ACCESS_FINE_LOCATION
+            ) == PackageManager.PERMISSION_GRANTED
+
+        val coarseLocationGranted =
+            ContextCompat.checkSelfPermission(
+                this,
+                Manifest.permission.ACCESS_COARSE_LOCATION
+            ) == PackageManager.PERMISSION_GRANTED
+
+        if (fineLocationGranted || coarseLocationGranted) {
+
+            getCurrentLocation()
+
+        } else {
+
+            ActivityCompat.requestPermissions(
+                this,
+                arrayOf(
+                    Manifest.permission.ACCESS_FINE_LOCATION,
+                    Manifest.permission.ACCESS_COARSE_LOCATION
+                ),
+                LOCATION_PERMISSION_REQUEST_CODE
+            )
+        }
+    }
+
+    // ====================================================
+    // GET CURRENT GPS LOCATION
+    // ====================================================
+
+    @SuppressLint("MissingPermission")
+    private fun getCurrentLocation() {
+
+        fusedLocationClient.lastLocation
+            .addOnSuccessListener { location: Location? ->
+
+                if (location != null) {
+
+                    val latitude = location.latitude
+                    val longitude = location.longitude
+
+                    Toast.makeText(
+                        this,
+                        "Lat: $latitude\nLng: $longitude",
+                        Toast.LENGTH_LONG
+                    ).show()
+
+                } else {
+
+                    Toast.makeText(
+                        this,
+                        "Unable to get current location",
+                        Toast.LENGTH_SHORT
+                    ).show()
+                }
+            }
+            .addOnFailureListener {
+
+                Toast.makeText(
+                    this,
+                    "Location error: ${it.message}",
+                    Toast.LENGTH_SHORT
+                ).show()
+            }
+    }
+
+    // ====================================================
+    // LOCATION PERMISSION RESULT
+    // ====================================================
+
+    override fun onRequestPermissionsResult(
+        requestCode: Int,
+        permissions: Array<out String>,
+        grantResults: IntArray
+    ) {
+        super.onRequestPermissionsResult(
+            requestCode,
+            permissions,
+            grantResults
+        )
+
+        if (requestCode == LOCATION_PERMISSION_REQUEST_CODE) {
+
+            if (grantResults.isNotEmpty() &&
+                grantResults.any {
+                    it == PackageManager.PERMISSION_GRANTED
+                }
+            ) {
+
+                getCurrentLocation()
+
+            } else {
+
+                Toast.makeText(
+                    this,
+                    "Location permission denied",
+                    Toast.LENGTH_SHORT
+                ).show()
+            }
         }
     }
 
@@ -140,17 +263,6 @@ class StaffHomeActivity : AppCompatActivity() {
     // ====================================================
 
     private fun logout() {
-
-        /*
-         * IMPORTANT:
-         *
-         * Firebase Authentication session must be
-         * cleared before opening LoginActivity.
-         *
-         * Otherwise LoginActivity.checkUserSession()
-         * will detect the Staff Firebase user and
-         * automatically open StaffHomeActivity again.
-         */
 
         auth.signOut()
 
@@ -170,7 +282,6 @@ class StaffHomeActivity : AppCompatActivity() {
             Intent.FLAG_ACTIVITY_NEW_TASK or
                     Intent.FLAG_ACTIVITY_CLEAR_TASK
 
-        // Tell LoginActivity that this is a fresh logout
         intent.putExtra(
             "loggedOut",
             true
@@ -181,4 +292,3 @@ class StaffHomeActivity : AppCompatActivity() {
         finish()
     }
 }
-
