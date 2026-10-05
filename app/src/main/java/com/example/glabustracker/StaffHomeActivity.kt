@@ -15,6 +15,7 @@ import androidx.core.content.ContextCompat
 import com.google.android.gms.location.FusedLocationProviderClient
 import com.google.android.gms.location.LocationServices
 import com.google.firebase.auth.FirebaseAuth
+import android.widget.TextView
 
 class StaffHomeActivity : AppCompatActivity() {
 
@@ -31,7 +32,7 @@ class StaffHomeActivity : AppCompatActivity() {
 
     // Location
     private lateinit var fusedLocationClient: FusedLocationProviderClient
-
+    private lateinit var tvLocation: TextView
     companion object {
         private const val LOCATION_PERMISSION_REQUEST_CODE = 1001
     }
@@ -57,6 +58,7 @@ class StaffHomeActivity : AppCompatActivity() {
     // ====================================================
 
     private fun initializeViews() {
+        tvLocation = findViewById(R.id.tvLocation)
 
         layoutLiveTracking =
             findViewById(R.id.layoutLiveTracking)
@@ -197,11 +199,7 @@ class StaffHomeActivity : AppCompatActivity() {
                     val latitude = location.latitude
                     val longitude = location.longitude
 
-                    Toast.makeText(
-                        this,
-                        "Lat: $latitude\nLng: $longitude",
-                        Toast.LENGTH_LONG
-                    ).show()
+                    tvLocation.text = "Latitude: $latitude\nLongitude: $longitude"
 
                 } else {
 
