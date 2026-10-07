@@ -37,6 +37,25 @@ class StaffHomeActivity : AppCompatActivity() {
         private const val LOCATION_PERMISSION_REQUEST_CODE = 1001
     }
 
+    private fun startLocationTrackingService() {
+
+        val serviceIntent = Intent(
+            this,
+            LocationTrackingService::class.java
+        )
+
+        ContextCompat.startForegroundService(
+            this,
+            serviceIntent
+        )
+
+        Toast.makeText(
+            this,
+            "Location tracking service started",
+            Toast.LENGTH_SHORT
+        ).show()
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
@@ -168,7 +187,7 @@ class StaffHomeActivity : AppCompatActivity() {
             ) == PackageManager.PERMISSION_GRANTED
 
         if (fineLocationGranted || coarseLocationGranted) {
-
+            startLocationTrackingService()
             getCurrentLocation()
 
         } else {
@@ -243,6 +262,7 @@ class StaffHomeActivity : AppCompatActivity() {
                 }
             ) {
 
+                startLocationTrackingService()
                 getCurrentLocation()
 
             } else {
