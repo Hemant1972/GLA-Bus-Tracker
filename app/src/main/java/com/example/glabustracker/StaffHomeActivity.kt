@@ -43,6 +43,10 @@ class StaffHomeActivity : AppCompatActivity() {
             this,
             LocationTrackingService::class.java
         )
+        serviceIntent.putExtra(
+            "staffId",
+            intent.getStringExtra("userId") ?: ""
+        )
 
         ContextCompat.startForegroundService(
             this,

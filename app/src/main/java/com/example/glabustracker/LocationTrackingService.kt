@@ -19,6 +19,9 @@ import com.google.android.gms.location.LocationResult
 import com.google.android.gms.location.LocationServices
 import com.google.android.gms.location.Priority
 
+import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.FieldValue
+
 class LocationTrackingService : Service() {
 
     companion object {
@@ -29,15 +32,20 @@ class LocationTrackingService : Service() {
 
     private lateinit var locationCallback: LocationCallback
 
+    private lateinit var firestore: FirebaseFirestore
+
+    private var assignedBusId: String = ""
+
     override fun onCreate() {
         super.onCreate()
         createNotificationChannel()
         fusedLocationClient =
             LocationServices.getFusedLocationProviderClient(this)
+        firestore = FirebaseFirestore.getInstance()
 
         locationCallback = object : LocationCallback() {
 
-            override fun onLocationResult(locationResult: LocationResult) {
+           override fun onLocationResult(locationResult: LocationResult) {
 
                 val location = locationResult.lastLocation
 
@@ -46,10 +54,44 @@ class LocationTrackingService : Service() {
                     val latitude = location.latitude
                     val longitude = location.longitude
 
+                    if (assignedBusId.isEmpty()) {
+                        Log.e(
+                            "LocationTracking",
+                            "Bus ID not available"
+                        )
+                        return
+                    }
+
                     Log.d(
                         "LocationTracking",
                         "Lat: $latitude, Lng: $longitude"
                     )
+
+                    val locationData = hashMapOf(
+                        "latitude" to latitude,
+                        "longitude" to longitude,
+                        "speed" to location.speed.toDouble(),
+                        "heading" to location.bearing.toDouble(),
+                        "updatedAt" to FieldValue.serverTimestamp(),
+                        "status" to "ONLINE"
+                    )
+
+                    firestore.collection("busLocations")
+                        .document(assignedBusId)
+                        .set(locationData)
+                        .addOnSuccessListener {
+                            Log.d(
+                                "LocationTracking",
+                                "Location sent to Firebase: $assignedBusId"
+                            )
+                        }
+                        .addOnFailureListener { exception ->
+                            Log.e(
+                                "LocationTracking",
+                                "Firebase location update failed",
+                                exception
+                            )
+                        }
                 }
             }
         }
@@ -95,15 +137,76 @@ class LocationTrackingService : Service() {
         startId: Int
     ): Int {
 
+        val staffId = intent?.getStringExtra("staffId") ?: ""
+
         val notification = createNotification()
 
         startForeground(
             NOTIFICATION_ID,
             notification
-
         )
-        startLocationUpdates()
+
+        if (staffId.isNotEmpty()) {
+            fetchAssignedBus(staffId)
+        } else {
+            Log.e(
+                "LocationTracking",
+                "Staff ID not available"
+            )
+        }
+
         return START_STICKY
+    }
+
+//    private fun fetchAssignedBus(staffId: String): Int {
+//        TODO("Not yet implemented")
+//    }
+
+    private fun fetchAssignedBus(staffId: String) {
+
+        firestore.collection("staff")
+            .document(staffId)
+            .get()
+            .addOnSuccessListener { document ->
+
+                if (document.exists()) {
+
+                    assignedBusId =
+                        document.getString("busId") ?: ""
+
+                    if (assignedBusId.isNotEmpty()) {
+
+                        Log.d(
+                            "LocationTracking",
+                            "Assigned Bus: $assignedBusId"
+                        )
+
+                        startLocationUpdates()
+
+                    } else {
+
+                        Log.e(
+                            "LocationTracking",
+                            "No bus assigned to staff"
+                        )
+                    }
+
+                } else {
+
+                    Log.e(
+                        "LocationTracking",
+                        "Staff document not found: $staffId"
+                    )
+                }
+            }
+            .addOnFailureListener { exception ->
+
+                Log.e(
+                    "LocationTracking",
+                    "Failed to fetch staff bus",
+                    exception
+                )
+            }
     }
 
     private fun createNotificationChannel() {
